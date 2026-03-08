@@ -28,10 +28,23 @@ local ItemLibrary = require(safeWaitForChild(Modules, "ItemLibrary"))
 local ReplicatedClass = require(safeWaitForChild(Modules, "ReplicatedClass"))
 
 local PlayerScripts = player:WaitForChild("PlayerScripts", 10)
-if not PlayerScripts then return end
+if not PlayerScripts then 
+    warn("[Nova Skinchanger] PlayerScripts not found")
+    return 
+end
 
-local ClientItem = require(PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem)
-local ClientViewModel = require(PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel)
+local success1, ClientItem = pcall(function()
+    return require(PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem)
+end)
+
+local success2, ClientViewModel = pcall(function()
+    return require(PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel)
+end)
+
+if not success1 or not success2 then
+    warn("[Nova Skinchanger] Failed to load client modules")
+    return
+end
 
 -- Initialize equipped data from config (supports both old and new format)
 for weapon, data in pairs(config) do
