@@ -1,0 +1,84 @@
+-- LOGIC CODE (LOADSTRING)
+loadstring([[
+local config = shared.Nova.skinchanger
+
+if not config or not config.enabled then
+    return
+end
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+_G.EquippedData = _G.EquippedData or {}
+
+local CosmeticLibrary = require(ReplicatedStorage.Modules:WaitForChild("CosmeticLibrary"))
+local ItemLibrary = require(ReplicatedStorage.Modules:WaitForChild("ItemLibrary"))
+local ReplicatedClass = require(ReplicatedStorage.Modules:WaitForChild("ReplicatedClass"))
+local ClientItem = require(player.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem)
+local ClientViewModel = require(player.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel)
+
+-- Initialize equipped data from config
+for weapon, skin in pairs(config) do
+    if weapon ~= "enabled" and type(skin) == "string" then
+        _G.EquippedData[weapon] = {Skin = skin, Wrap = "None"}
+    end
+end
+
+local function getCosmeticData(name, cType)
+    local base = CosmeticLibrary.Cosmetics[name]
+    if not base then return nil end
+    local data = table.clone(base)
+    data.Name = name
+    data.Type = cType
+    if name == "AKEY-47" then
+        data.IsMythical = true
+        data.BundlePath = "Bundles"
+    elseif name:find("Gingerbread") then
+        data.BundlePath = "Festive Skin Case"
+    end
+    return data
+end
+
+local oldGetWrap = ClientViewModel.GetWrap
+ClientViewModel.GetWrap = function(self)
+    local weaponName = self.ClientItem and self.ClientItem.Name
+    if weaponName and _G.EquippedData[weaponName] then
+        local wrapName = _G.EquippedData[weaponName].Wrap
+        if wrapName ~= "None" then return getCosmeticData(wrapName, "Wrap") end
+    end
+    return oldGetWrap(self)
+end
+
+local oldNew = ClientViewModel.new
+ClientViewModel.new = function(replicatedData, clientItem)
+    local weaponName = clientItem.Name
+    if _G.EquippedData[weaponName] and clientItem.ClientFighter.Player == player then
+        local dataKey = ReplicatedClass:ToEnum("Data")
+        local skinKey = ReplicatedClass:ToEnum("Skin")
+        local nameKey = ReplicatedClass:ToEnum("Name")
+        replicatedData[dataKey] = replicatedData[dataKey] or {}
+        local selectedSkin = _G.EquippedData[weaponName].Skin
+        if selectedSkin ~= "Default" then
+            replicatedData[dataKey][skinKey] = getCosmeticData(selectedSkin, "Skin")
+            replicatedData[dataKey][nameKey] = selectedSkin
+        end
+    end
+    local vm = oldNew(replicatedData, clientItem)
+    task.delay(0.1, function() if vm and vm._UpdateWrap then vm:_UpdateWrap() end end)
+    return vm
+end
+
+-- Auto-equip configured skins
+for weapon, skin in pairs(config) do
+    if weapon ~= "enabled" and type(skin) == "string" then
+        pcall(function() CosmeticLibrary.Equip(weapon, "Skin", skin) end)
+        pcall(function()
+            local rem = ReplicatedStorage:FindFirstChild("EquipCosmetic", true) or ReplicatedStorage.Remotes:FindFirstChild("EquipCosmetic")
+            if rem then rem:FireServer(weapon, skin) end
+        end)
+    end
+end
+
+print("[Nova Skinchanger] Loaded successfully!")
+]])()
