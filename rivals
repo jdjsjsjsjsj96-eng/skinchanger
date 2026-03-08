@@ -10,41 +10,11 @@ local player = Players.LocalPlayer
 
 _G.EquippedData = _G.EquippedData or {}
 
--- Wait for modules with timeout
-local function safeWaitForChild(parent, childName, timeout)
-    local child = parent:WaitForChild(childName, timeout or 10)
-    if not child then
-        warn("[Nova Skinchanger] Failed to find: " .. childName)
-        return nil
-    end
-    return child
-end
-
-local Modules = safeWaitForChild(ReplicatedStorage, "Modules")
-if not Modules then return end
-
-local CosmeticLibrary = require(safeWaitForChild(Modules, "CosmeticLibrary"))
-local ItemLibrary = require(safeWaitForChild(Modules, "ItemLibrary"))
-local ReplicatedClass = require(safeWaitForChild(Modules, "ReplicatedClass"))
-
-local PlayerScripts = player:WaitForChild("PlayerScripts", 10)
-if not PlayerScripts then 
-    warn("[Nova Skinchanger] PlayerScripts not found")
-    return 
-end
-
-local success1, ClientItem = pcall(function()
-    return require(PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem)
-end)
-
-local success2, ClientViewModel = pcall(function()
-    return require(PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel)
-end)
-
-if not success1 or not success2 then
-    warn("[Nova Skinchanger] Failed to load client modules")
-    return
-end
+local CosmeticLibrary = require(ReplicatedStorage.Modules:WaitForChild("CosmeticLibrary"))
+local ItemLibrary = require(ReplicatedStorage.Modules:WaitForChild("ItemLibrary"))
+local ReplicatedClass = require(ReplicatedStorage.Modules:WaitForChild("ReplicatedClass"))
+local ClientItem = require(player.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem)
+local ClientViewModel = require(player.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel)
 
 -- Initialize equipped data from config (supports both old and new format)
 for weapon, data in pairs(config) do
