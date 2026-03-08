@@ -1,5 +1,3 @@
--- LOGIC CODE (LOADSTRING)
-loadstring([[
 local config = shared.Nova.skinchanger
 
 if not config or not config.enabled then
@@ -18,10 +16,19 @@ local ReplicatedClass = require(ReplicatedStorage.Modules:WaitForChild("Replicat
 local ClientItem = require(player.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem)
 local ClientViewModel = require(player.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel)
 
--- Initialize equipped data from config
-for weapon, skin in pairs(config) do
-    if weapon ~= "enabled" and type(skin) == "string" then
-        _G.EquippedData[weapon] = {Skin = skin, Wrap = "None"}
+-- Initialize equipped data from config (supports both old and new format)
+for weapon, data in pairs(config) do
+    if weapon ~= "enabled" then
+        if type(data) == "string" then
+            -- Old format: ['Weapon'] = 'Skin'
+            _G.EquippedData[weapon] = {Skin = data, Wrap = "None"}
+        elseif type(data) == "table" then
+            -- New format: ['Weapon'] = {skin = 'Skin', wrap = 'Wrap'}
+            _G.EquippedData[weapon] = {
+                Skin = data.skin or "Default",
+                Wrap = data.wrap or "None"
+            }
+        end
     end
 end
 
@@ -69,16 +76,37 @@ ClientViewModel.new = function(replicatedData, clientItem)
     return vm
 end
 
--- Auto-equip configured skins
-for weapon, skin in pairs(config) do
-    if weapon ~= "enabled" and type(skin) == "string" then
-        pcall(function() CosmeticLibrary.Equip(weapon, "Skin", skin) end)
-        pcall(function()
-            local rem = ReplicatedStorage:FindFirstChild("EquipCosmetic", true) or ReplicatedStorage.Remotes:FindFirstChild("EquipCosmetic")
-            if rem then rem:FireServer(weapon, skin) end
-        end)
+-- Auto-equip configured skins and wraps
+for weapon, data in pairs(config) do
+    if weapon ~= "enabled" then
+        local skinName, wrapName
+        
+        if type(data) == "string" then
+            skinName = data
+            wrapName = nil
+        elseif type(data) == "table" then
+            skinName = data.skin
+            wrapName = data.wrap
+        end
+        
+        -- Equip skin
+        if skinName and skinName ~= "Default" then
+            pcall(function() CosmeticLibrary.Equip(weapon, "Skin", skinName) end)
+            pcall(function()
+                local rem = ReplicatedStorage:FindFirstChild("EquipCosmetic", true) or ReplicatedStorage.Remotes:FindFirstChild("EquipCosmetic")
+                if rem then rem:FireServer(weapon, skinName) end
+            end)
+        end
+        
+        -- Equip wrap
+        if wrapName and wrapName ~= "None" then
+            pcall(function() CosmeticLibrary.Equip(weapon, "Wrap", wrapName) end)
+            pcall(function()
+                local rem = ReplicatedStorage:FindFirstChild("EquipCosmetic", true) or ReplicatedStorage.Remotes:FindFirstChild("EquipCosmetic")
+                if rem then rem:FireServer(weapon, wrapName) end
+            end)
+        end
     end
 end
 
-print("[Nova Skinchanger] Loaded successfully!")
-]])()
+print("[Nova Skinchanger] Loaded successfully with wraps support!")
