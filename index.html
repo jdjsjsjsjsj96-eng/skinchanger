@@ -482,7 +482,7 @@
         ▶ Play
       </button>
       <button id="yt-expand-btn" onclick="toggleBgPlayer()" style="
-        display:none;padding:10px 14px;border-radius:12px;white-space:nowrap;
+        display:inline-block;padding:10px 14px;border-radius:12px;white-space:nowrap;
         border:1px solid rgba(56,189,248,0.25);background:rgba(56,189,248,0.07);
         color:var(--sky);font-size:0.82rem;font-weight:700;font-family:'Inter',sans-serif;
         box-shadow:0 0 12px rgba(56,189,248,0.1);transition:all 0.2s;
@@ -495,18 +495,25 @@
   </div>
 
   <!-- Background Video Player -->
-  <div id="yt-bg-overlay" style="
-    display:none;position:fixed;inset:0;z-index:5;
-    background:rgba(4,9,15,0.6);backdrop-filter:blur(2px);
-    transition:opacity 0.4s;opacity:0;pointer-events:none;
-  "></div>
   <div id="yt-bg-frame-wrap" style="
-    display:none;position:fixed;inset:0;z-index:4;pointer-events:none;
+    display:none;position:fixed;inset:0;z-index:1;pointer-events:none;
   ">
     <iframe id="yt-frame" width="100%" height="100%" frameborder="0"
       allow="autoplay;encrypted-media" allowfullscreen
       style="display:block;width:100%;height:100%;"></iframe>
   </div>
+  <!-- Collapse button shown when bg is active -->
+  <button id="yt-collapse-btn" onclick="toggleBgPlayer()" style="
+    display:none;position:fixed;bottom:90px;right:24px;z-index:10000;
+    padding:9px 16px;border-radius:30px;border:1px solid rgba(255,80,80,0.35);
+    background:rgba(4,9,15,0.85);color:rgba(255,120,120,0.9);
+    font-size:0.75rem;font-weight:700;font-family:'Inter',sans-serif;
+    box-shadow:0 0 16px rgba(0,0,0,0.5);backdrop-filter:blur(10px);
+    transition:all 0.2s;letter-spacing:0.5px;
+  " onmouseover="this.style.background='rgba(255,80,80,0.15)';this.style.borderColor='rgba(255,80,80,0.6)'"
+     onmouseout="this.style.background='rgba(4,9,15,0.85)';this.style.borderColor='rgba(255,80,80,0.35)'">
+    ✕ Close Background
+  </button>
 </div>
 
 <!-- DASHBOARD -->
@@ -980,7 +987,6 @@
     const videoId = match[1];
     // Load into the background iframe but keep it hidden until expand is clicked
     frame.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
-    expandBtn.style.display = 'inline-block';
     // If bg was already active, keep it showing with new video
     if (bgActive) {
       document.getElementById('yt-bg-frame-wrap').style.display = 'block';
@@ -989,27 +995,24 @@
 
   let bgActive = false;
   function toggleBgPlayer() {
-    const overlay = document.getElementById('yt-bg-overlay');
     const wrap = document.getElementById('yt-bg-frame-wrap');
-    const btn = document.getElementById('yt-expand-btn');
+    const collapseBtn = document.getElementById('yt-collapse-btn');
+    const expandBtn = document.getElementById('yt-expand-btn');
     bgActive = !bgActive;
     if (bgActive) {
       wrap.style.display = 'block';
-      overlay.style.display = 'block';
-      setTimeout(() => { overlay.style.opacity = '1'; overlay.style.pointerEvents = 'none'; }, 10);
-      btn.textContent = '✕';
-      btn.style.borderColor = 'rgba(255,80,80,0.4)';
-      btn.style.color = 'rgba(255,120,120,0.9)';
-      btn.onmouseover = () => { btn.style.background='rgba(255,80,80,0.1)'; btn.style.boxShadow='0 0 20px rgba(255,80,80,0.2)'; };
-      btn.onmouseout  = () => { btn.style.background='rgba(56,189,248,0.07)'; btn.style.boxShadow='0 0 12px rgba(56,189,248,0.1)'; };
+      collapseBtn.style.display = 'block';
+      expandBtn.textContent = '⛶';
+      expandBtn.style.borderColor = 'rgba(56,189,248,0.5)';
+      expandBtn.style.color = 'var(--sky)';
+      expandBtn.style.background = 'rgba(56,189,248,0.15)';
     } else {
-      overlay.style.opacity = '0';
-      setTimeout(() => { overlay.style.display = 'none'; wrap.style.display = 'none'; }, 400);
-      btn.textContent = '⛶';
-      btn.style.borderColor = 'rgba(56,189,248,0.25)';
-      btn.style.color = 'var(--sky)';
-      btn.onmouseover = () => { btn.style.background='rgba(56,189,248,0.15)'; btn.style.boxShadow='0 0 20px rgba(56,189,248,0.3)'; btn.style.borderColor='rgba(56,189,248,0.5)'; };
-      btn.onmouseout  = () => { btn.style.background='rgba(56,189,248,0.07)'; btn.style.boxShadow='0 0 12px rgba(56,189,248,0.1)'; btn.style.borderColor='rgba(56,189,248,0.25)'; };
+      wrap.style.display = 'none';
+      collapseBtn.style.display = 'none';
+      expandBtn.textContent = '⛶';
+      expandBtn.style.borderColor = 'rgba(56,189,248,0.25)';
+      expandBtn.style.color = 'var(--sky)';
+      expandBtn.style.background = 'rgba(56,189,248,0.07)';
     }
   }
 
