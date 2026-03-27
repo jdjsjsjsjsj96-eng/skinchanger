@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Skin Changer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; cursor: default; user-select: none; }
+    a, button, .weapon-row, .logo-circle, .btn-start, .nav-center a { cursor: pointer; }
+
+    :root { --sky: #38bdf8; --sky-dark: #0ea5e9; --sky-glow: #7dd3fc; --bg: #04090f; }
+
+    body { background: var(--bg); color: #fff; font-family: 'Inter', sans-serif; min-height: 100vh; overflow: hidden; }
+
+    /* BACKGROUND */
+    .bg-particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .particle { position: absolute; border-radius: 50%; background: var(--sky); opacity: 0; animation: floatUp linear infinite; }
+    @keyframes floatUp {
+      0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+      10%  { opacity: 0.35; }
+      90%  { opacity: 0.1; }
+      100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+    }
+    .center-glow {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(56,189,248,0.07) 0%, transparent 65%);
+      pointer-events: none; z-index: 0; animation: pulseGlow 5s ease-in-out infinite;
+    }
+    @keyframes pulseGlow {
+      0%,100% { opacity: 0.5; transform: translate(-50%,-50%) scale(1); }
+      50%      { opacity: 1;   transform: translate(-50%,-50%) scale(1.12); }
+    }
+    .scanlines {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(56,189,248,0.012) 2px, rgba(56,189,248,0.012) 4px);
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 36px; height: 62px;
+      background: rgba(4,9,15,0.98);
+      border-bottom: 1px solid rgba(56,189,248,0.12);
+    }
+    .nav-logo { font-size: 1.15rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 9px; }
+    .nav-logo-icon {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--sky-dark), var(--sky));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 900; color: #fff;
+      box-shadow: 0 0 14px rgba(56,189,248,0.4);
+      position: relative;
+    }
+    .nav-logo-icon::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1.5px solid transparent;
+      border-top-color: var(--sky);
+      border-right-color: rgba(56,189,248,0.3);
+      box-shadow: 0 0 8px rgba(56,189,248,0.5);
+      animation: navSpin 2s linear infinite;
+    }
+    @keyframes navSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .nav-logo span { color: var(--sky); }
+    .nav-center {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 2px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(56,189,248,0.12);
+      border-radius: 12px; padding: 4px;
+    }
+    .nav-center a {
+      text-decoration: none; color: rgba(255,255,255,0.5);
+      padding: 6px 22px; border-radius: 8px; font-size: 0.875rem; font-weight: 500;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .nav-center a:hover { color: rgba(255,255,255,0.85); background: rgba(56,189,248,0.08); }
+    .nav-center a.active { background: rgba(56,189,248,0.18); color: var(--sky); box-shadow: 0 0 10px rgba(56,189,248,0.15); }
+    .nav-right { display: flex; align-items: center; }
+    .nav-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(56,189,248,0.07); border: 1px solid rgba(56,189,248,0.15);
+      border-radius: 20px; padding: 5px 12px; font-size: 0.78rem; color: rgba(255,255,255,0.55);
+    }
+    .nav-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade80; animation: blink 2s ease-in-out infinite; }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* PAGES — no fixed positioning, just show/hide sections */
+    .page { display: none; }
+    .page.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    #dashboard.active { display: block; }
+
+    /* HOME */
+    #home { min-height: calc(100vh - 62px); margin-top: 62px; position: relative; z-index: 1; }
+    .logo-wrap { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; animation: fadeInScale 0.9s cubic-bezier(.34,1.56,.64,1) 0.3s both; }
+    @keyframes fadeInScale { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+    .orbit { position: absolute; border-radius: 50%; border: 1px dashed rgba(56,189,248,0.18); pointer-events: none; }
+    .orbit-1 { width: 200px; height: 200px; animation: spin 14s linear infinite; }
+    .orbit-2 { width: 240px; height: 240px; animation: spin 22s linear infinite reverse; border-style: dotted; opacity: 0.5; }
+    .orbit-1::before, .orbit-2::before { content: ''; position: absolute; top: -4px; left: 50%; width: 7px; height: 7px; background: var(--sky); border-radius: 50%; box-shadow: 0 0 8px var(--sky); transform: translateX(-50%); }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .logo-circle {
+      width: 155px; height: 155px; border-radius: 50%;
+      background: radial-gradient(circle at 38% 32%, #0c1e30, #04090f);
+      border: 1.5px solid rgba(56,189,248,0.25);
+      display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+      transition: box-shadow 0.4s, border-color 0.4s, transform 0.4s;
+      box-shadow: 0 0 25px rgba(56,189,248,0.1), inset 0 0 25px rgba(56,189,248,0.04);
+      animation: borderPulse 5s ease-in-out infinite;
+    }
+    @keyframes borderPulse { 0%,100% { border-color: rgba(56,189,248,0.25); } 50% { border-color: rgba(56,189,248,0.55); } }
+    .logo-r { width: 115px; height: 115px; object-fit: contain; position: relative; z-index: 1; transition: filter 0.4s; filter: drop-shadow(0 0 10px rgba(56,189,248,0.5)); }
+    .logo-config { position: absolute; inset: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; letter-spacing: 3px; color: rgba(255,255,255,0.95); backdrop-filter: blur(8px); background: rgba(4,9,15,0.5); opacity: 0; transition: opacity 0.35s; z-index: 2; text-shadow: 0 0 12px var(--sky); }
+    .logo-circle:hover { box-shadow: 0 0 55px rgba(56,189,248,0.65), 0 0 110px rgba(56,189,248,0.25), inset 0 0 35px rgba(56,189,248,0.15); border-color: var(--sky); transform: scale(1.05); }
+    .logo-circle:hover .logo-r { filter: drop-shadow(0 0 18px var(--sky)) drop-shadow(0 0 40px rgba(56,189,248,0.5)) brightness(1.15); }
+    .logo-circle:hover .logo-config { opacity: 1; }
+    .tagline { font-size: 0.72rem; letter-spacing: 5px; color: rgba(255,255,255,0.28); text-transform: uppercase; animation: fadeIn 1.2s ease 0.8s both; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* DASHBOARD */
+    #dashboard { margin-top: 62px; height: calc(100vh - 62px); overflow-y: scroll; padding: 36px 32px 120px; position: relative; z-index: 1; }
+    #dashboard::-webkit-scrollbar { width: 6px; }
+    #dashboard::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 4px; }
+    #dashboard::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.35); border-radius: 4px; }
+    #dashboard::-webkit-scrollbar-thumb:hover { background: rgba(56,189,248,0.6); }
+    .dash-header { position: relative; text-align: center; margin-bottom: 32px; animation: fadeIn 0.5s ease both; }
+    .dash-header-text { text-align: center; }
+    .dash-header h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: 2px; color: #fff; margin-bottom: 6px; }
+    .dash-header p { font-size: 0.78rem; color: rgba(255,255,255,0.3); letter-spacing: 2px; text-transform: uppercase; }
+    .dash-header-actions { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; gap: 8px; }
+    .btn-save-config {
+      padding: 7px 14px; border-radius: 10px;
+      background: rgba(56,189,248,0.08);
+      border: 1px solid rgba(56,189,248,0.25);
+      color: var(--sky); font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.5px; transition: all 0.25s;
+      display: flex; align-items: center; gap: 6px; white-space: nowrap;
+    }
+    .btn-save-config svg { flex-shrink: 0; transition: transform 0.3s; }
+    .btn-save-config:hover { background: rgba(56,189,248,0.15); border-color: rgba(56,189,248,0.5); box-shadow: 0 0 14px rgba(56,189,248,0.2); }
+    .btn-save-config:hover svg { transform: translateY(2px); }
+    .btn-save-config:active { transform: scale(0.97); }
+    .btn-preview-config {
+      padding: 7px 14px; border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.5); font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.5px; transition: all 0.25s;
+      display: flex; align-items: center; gap: 6px; white-space: nowrap;
+    }
+    .btn-preview-config:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #fff; }
+    .btn-preview-config:active { transform: scale(0.97); }
+
+    /* CONFIG PREVIEW POPUP */
+    .config-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .config-overlay.show { opacity: 1; pointer-events: auto; }
+    .config-modal {
+      background: rgba(6,14,24,0.98); border: 1px solid rgba(56,189,248,0.15);
+      border-radius: 16px; width: 420px; max-width: 90vw; max-height: 80vh;
+      display: flex; flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+      transform: scale(0.93); transition: transform 0.25s;
+      overflow: hidden;
+    }
+    .config-overlay.show .config-modal { transform: scale(1); }
+    .config-modal-header {
+      padding: 14px 18px; border-bottom: 1px solid rgba(56,189,248,0.08);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .config-modal-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 3px; color: rgba(56,189,248,0.7); text-transform: uppercase; }
+    .config-modal-close { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.4); width: 26px; height: 26px; border-radius: 7px; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .config-modal-close:hover { color: #fff; background: rgba(255,255,255,0.12); }
+    .config-preview-box {
+      flex: 1; overflow-y: auto; padding: 18px;
+      font-family: 'Courier New', monospace; font-size: 0.82rem;
+      color: rgba(56,189,248,0.85); line-height: 2;
+      min-height: 120px;
+    }
+    .config-preview-box::-webkit-scrollbar { width: 4px; }
+    .config-preview-box::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.2); border-radius: 4px; }
+    .config-preview-empty { color: rgba(255,255,255,0.2); font-style: italic; font-family: inherit; }
+    .config-preview-line { display: block; }
+    .config-preview-line .key { color: rgba(255,255,255,0.5); }
+    .config-preview-line .eq  { color: rgba(56,189,248,0.4); margin: 0 2px; }
+    .config-preview-line .val { color: var(--sky); }
+    .config-modal-footer { padding: 12px 18px; border-top: 1px solid rgba(56,189,248,0.08); }
+    .config-copy-btn {
+      width: 100%; padding: 10px; border: none; border-radius: 10px;
+      background: linear-gradient(135deg, var(--sky-dark), var(--sky));
+      color: #fff; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.5px;
+      box-shadow: 0 0 16px rgba(56,189,248,0.25); transition: all 0.25s;
+    }
+    .config-copy-btn:hover { transform: scale(1.02); box-shadow: 0 0 26px rgba(56,189,248,0.5); }
+    .config-copy-btn:active { transform: scale(0.98); }
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; max-width: 1200px; margin: 0 auto; }
+    .weapon-card { background: rgba(8,18,30,0.8); border: 1px solid rgba(56,189,248,0.1); border-radius: 16px; overflow: hidden; animation: cardIn 0.5s ease both; transition: border-color 0.3s, box-shadow 0.3s, opacity 0.2s, transform 0.2s; position: relative; }
+    .weapon-card:hover { border-color: rgba(56,189,248,0.3); box-shadow: 0 0 24px rgba(56,189,248,0.08); }
+    .weapon-card.dragging { opacity: 0.08; transform: scale(0.98); pointer-events: none; }
+    .weapon-card.drag-over { border-color: var(--sky) !important; box-shadow: 0 0 0 2px rgba(56,189,248,0.35), 0 0 28px rgba(56,189,248,0.15) !important; }
+    .card-drop-overlay {
+      position: absolute; inset: 0; border-radius: 16px;
+      background: rgba(4,9,15,0.55);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; font-weight: 800; letter-spacing: 6px; text-transform: uppercase;
+      color: var(--sky); text-shadow: 0 0 16px var(--sky);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 5;
+    }
+    .weapon-card.drag-over .card-drop-overlay { opacity: 1; }
+    .weapon-card:nth-child(1) { animation-delay: 0.05s; }
+    .weapon-card:nth-child(2) { animation-delay: 0.1s; }
+    .weapon-card:nth-child(3) { animation-delay: 0.15s; }
+    .weapon-card:nth-child(4) { animation-delay: 0.2s; }
+    @keyframes cardIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .card-header { padding: 14px 18px 10px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(56,189,248,0.07); cursor: grab; }
+    .card-header:active { cursor: grabbing; }
+    .card-drag-handle { margin-left: auto; display: flex; flex-direction: column; gap: 3px; opacity: 0.25; transition: opacity 0.2s; pointer-events: none; }
+    .card-drag-handle span { display: block; width: 14px; height: 1.5px; background: var(--sky); border-radius: 2px; }
+    .card-header:hover .card-drag-handle { opacity: 0.7; }
+    .card-header-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--sky); box-shadow: 0 0 6px var(--sky); }
+    .card-header span { font-size: 0.7rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: rgba(56,189,248,0.7); }
+    .weapon-row { display: flex; align-items: center; padding: 10px 18px; border-bottom: 1px solid rgba(255,255,255,0.03); gap: 12px; transition: background 0.2s; }
+    .weapon-row:last-child { border-bottom: none; }
+    .weapon-row:hover { background: rgba(56,189,248,0.04); }
+    .weapon-icon { width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; transition: background 0.2s; }
+    .weapon-row:hover .weapon-icon { background: rgba(56,189,248,0.1); border-color: rgba(56,189,248,0.2); }
+    .weapon-icon.has-skin { border-color: rgba(56,189,248,0.5); animation: iconGlow 2.5s ease-in-out infinite; }
+    @keyframes iconGlow {
+      0%,100% { box-shadow: 0 0 4px rgba(56,189,248,0.2); border-color: rgba(56,189,248,0.3); }
+      50%      { box-shadow: 0 0 16px rgba(56,189,248,0.7), 0 0 30px rgba(56,189,248,0.3); border-color: rgba(56,189,248,0.8); }
+    }
+    .weapon-info { flex: 1; }
+    .weapon-name { font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 2px; }
+    .weapon-skin { font-size: 0.72rem; color: rgba(255,255,255,0.3); }
+    .weapon-arrow { color: rgba(56,189,248,0.4); font-size: 0.7rem; transition: color 0.2s, transform 0.2s; }
+    .weapon-row:hover .weapon-arrow { color: var(--sky); transform: translateX(2px); }
+    .weapon-row.open .weapon-arrow { transform: rotate(180deg); color: var(--sky); }
+
+    /* weapon name glow when skin selected */
+    .weapon-name.has-skin { color: var(--sky); text-shadow: 0 0 10px rgba(56,189,248,0.6); }
+
+    /* skin panel */
+    .skin-panel { display: none; border-top: 1px solid rgba(56,189,248,0.08); background: rgba(4,9,15,0.5); }
+    .skin-panel.open { display: block; animation: fadeIn 0.25s ease; }
+    .skin-panel-header { padding: 8px 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(56,189,248,0.06); }
+    .skin-panel-header span { font-size: 0.7rem; color: rgba(255,255,255,0.3); letter-spacing: 1px; }
+    .skin-count { font-size: 0.7rem; color: var(--sky); font-weight: 700; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.2); border-radius: 20px; padding: 2px 10px; }
+    .skin-option { display: flex; align-items: center; gap: 10px; padding: 9px 18px; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.2s; }
+    .skin-option:last-child { border-bottom: none; }
+    .skin-option:hover { background: rgba(56,189,248,0.04); }
+    .skin-option.selected { background: rgba(56,189,248,0.08); }
+    .skin-thumb { width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; transition: border-color 0.2s; }
+    .skin-option.selected .skin-thumb { border-color: rgba(56,189,248,0.5); }
+    .skin-label { font-size: 0.8rem; color: rgba(255,255,255,0.6); flex: 1; transition: color 0.2s; }
+    .skin-option.selected .skin-label { color: rgba(255,255,255,0.9); }
+    .skin-radio { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid rgba(56,189,248,0.3); flex-shrink: 0; transition: all 0.2s; position: relative; }
+    .skin-option.selected .skin-radio { border-color: var(--sky); background: var(--sky); box-shadow: 0 0 8px rgba(56,189,248,0.6); }
+    .skin-option.selected .skin-radio::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: #fff; }
+
+    /* BOTTOM BAR */
+    .bottom-bar {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center;
+      background: rgba(6,14,24,0.92); border: 1px solid rgba(56,189,248,0.13);
+      border-radius: 18px; overflow: hidden; z-index: 9999;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    .bar-segment { display: flex; align-items: center; gap: 8px; padding: 11px 20px; font-size: 0.82rem; color: rgba(255,255,255,0.55); white-space: nowrap; border-right: 1px solid rgba(56,189,248,0.1); transition: background 0.2s; }
+    .bar-segment:last-child { border-right: none; }
+    .bar-segment:hover { background: rgba(56,189,248,0.05); }
+    .bar-segment .label { color: rgba(255,255,255,0.3); font-size: 0.75rem; font-weight: 600; transition: color 0.2s, text-shadow 0.2s; }
+    .bar-segment .value { color: rgba(255,255,255,0.3); font-weight: 600; transition: color 0.2s, text-shadow 0.2s; }
+    .bar-segment:hover .value, .bar-segment:hover .label { color: var(--sky); text-shadow: 0 0 10px rgba(56,189,248,0.6); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sky); box-shadow: 0 0 7px var(--sky); animation: blink 2s ease-in-out infinite; flex-shrink: 0; }
+    .btn-start { margin: 7px; padding: 9px 22px; background: linear-gradient(135deg, var(--sky-dark), var(--sky)); color: #fff; border: none; border-radius: 11px; font-size: 0.875rem; font-weight: 600; box-shadow: 0 0 18px rgba(56,189,248,0.3); position: relative; overflow: hidden; white-space: nowrap; transition: all 0.25s; }
+    .btn-start::before { content: ''; position: absolute; top: 0; left: -100%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: left 0.5s; }
+    .btn-start:hover { transform: scale(1.04); box-shadow: 0 0 30px rgba(56,189,248,0.55); }
+    .btn-start:hover::before { left: 150%; }
+    .btn-start:active { transform: scale(0.97); }
+
+    /* UPDATE POPUP */
+    .update-popup {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(10px);
+      background: rgba(6,14,24,0.97); border: 1px solid rgba(56,189,248,0.2);
+      border-radius: 18px; padding: 22px 24px; width: 320px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(56,189,248,0.05);
+      z-index: 9998; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      backdrop-filter: blur(20px);
+    }
+    .update-popup.show { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+    .update-popup-title { font-size: 0.95rem; font-weight: 800; color: #fff; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+    .update-popup-title::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--sky); box-shadow: 0 0 8px var(--sky); flex-shrink: 0; animation: blink 2s ease-in-out infinite; }
+    .update-popup-date { font-size: 0.7rem; color: rgba(255,255,255,0.3); margin-bottom: 16px; letter-spacing: 1px; }
+    .update-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(56,189,248,0.06); }
+    .update-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .update-tag { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+    .tag-fix    { background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.25); color: #4ade80; }
+    .tag-new    { background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.25); color: var(--sky); }
+    .tag-update { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.25); color: #fbbf24; }
+    .update-text { font-size: 0.78rem; color: rgba(255,255,255,0.6); line-height: 1.4; }
+    .script-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .script-overlay.show { opacity: 1; pointer-events: auto; }
+    .script-modal {
+      background: rgba(6,14,24,0.98); border: 1px solid rgba(56,189,248,0.2);
+      border-radius: 20px; padding: 28px; width: 480px; max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(56,189,248,0.08);
+      transform: scale(0.92); transition: transform 0.25s;
+    }
+    .script-overlay.show .script-modal { transform: scale(1); }
+    .script-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .script-modal-title { font-size: 1rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .script-modal-title::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--sky); box-shadow: 0 0 8px var(--sky); display: inline-block; }
+    .script-modal-close { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); width: 28px; height: 28px; border-radius: 8px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .script-modal-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .script-box {
+      background: rgba(0,0,0,0.4); border: 1px solid rgba(56,189,248,0.15);
+      border-radius: 12px; padding: 16px; font-family: 'Courier New', monospace;
+      font-size: 0.78rem; color: rgba(56,189,248,0.9); line-height: 1.6;
+      word-break: break-all; margin-bottom: 16px;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+    }
+    .script-copy-btn {
+      width: 100%; padding: 11px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, var(--sky-dark), var(--sky));
+      color: #fff; font-size: 0.875rem; font-weight: 700; letter-spacing: 0.5px;
+      box-shadow: 0 0 20px rgba(56,189,248,0.3); transition: all 0.25s;
+      position: relative; overflow: hidden;
+    }
+    .script-copy-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: left 0.5s; }
+    .script-copy-btn:hover { transform: scale(1.02); box-shadow: 0 0 30px rgba(56,189,248,0.55); }
+    .script-copy-btn:hover::before { left: 150%; }
+    .script-copy-btn:active { transform: scale(0.98); }
+
+    /* COPIED TOAST */
+    .copy-toast {
+      position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%) translateY(10px);
+      background: rgba(6,14,24,0.95); border: 1px solid rgba(56,189,248,0.3);
+      border-radius: 30px; padding: 9px 20px; font-size: 0.82rem; font-weight: 600;
+      color: var(--sky); box-shadow: 0 0 20px rgba(56,189,248,0.2);
+      z-index: 10001; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .copy-toast::before { content: '✓'; font-weight: 900; }
+    .copy-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .team-popup {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(10px);
+      background: rgba(6,14,24,0.97); border: 1px solid rgba(56,189,248,0.2);
+      border-radius: 16px; padding: 18px 20px; min-width: 260px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(56,189,248,0.05);
+      z-index: 9998; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      backdrop-filter: blur(20px);
+    }
+    .team-popup.show { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+    .popup-member { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(56,189,248,0.07); }
+    .popup-member:last-child { border-bottom: none; padding-bottom: 0; }
+    .popup-avatar {
+      width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--sky-dark), var(--sky));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 800; color: #fff;
+      box-shadow: 0 0 10px rgba(56,189,248,0.3);
+    }
+    .popup-info { flex: 1; }
+    .popup-name { font-size: 0.88rem; font-weight: 700; color: #fff; margin-bottom: 3px; }
+    .popup-roles { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
+    .popup-role {
+      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.5px;
+      padding: 2px 7px; border-radius: 20px;
+      background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.2);
+      color: var(--sky);
+    }
+    .popup-role.owner { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.3); color: #fbbf24; }
+    .popup-discord { font-size: 0.72rem; color: rgba(255,255,255,0.35); display: flex; align-items: center; gap: 5px; }
+    .popup-discord::before { content: ''; display: inline-block; width: 10px; height: 10px; background: #5865f2; border-radius: 3px; flex-shrink: 0; }
+    .popup-close { position: absolute; top: 10px; right: 12px; font-size: 0.75rem; color: rgba(255,255,255,0.3); background: none; border: none; padding: 2px 6px; border-radius: 4px; transition: color 0.2s; }
+    .popup-close:hover { color: rgba(255,255,255,0.7); }
+    .popup-learn-btn {
+      margin-top: 7px; padding: 5px 11px; border-radius: 8px; font-size: 0.7rem; font-weight: 600;
+      background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2);
+      color: var(--sky); transition: all 0.2s; letter-spacing: 0.3px;
+    }
+    .popup-learn-btn:hover { background: rgba(56,189,248,0.18); border-color: rgba(56,189,248,0.45); box-shadow: 0 0 10px rgba(56,189,248,0.2); }
+    .learn-overlay {
+      position: fixed; inset: 0; z-index: 10001;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .learn-overlay.show { opacity: 1; pointer-events: auto; }
+    .learn-modal {
+      background: rgba(6,14,24,0.98); border: 1px solid rgba(56,189,248,0.2);
+      border-radius: 18px; padding: 26px; width: 320px; max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+      transform: scale(0.92); transition: transform 0.2s;
+    }
+    .learn-overlay.show .learn-modal { transform: scale(1); }
+    .learn-modal-top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+    .learn-modal-avatar { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; flex-shrink: 0; border: 1px solid rgba(56,189,248,0.2); }
+    .learn-modal-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .learn-modal-name { font-size: 1rem; font-weight: 800; color: #fff; }
+    .learn-modal-close { margin-left: auto; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.4); width: 26px; height: 26px; border-radius: 7px; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+    .learn-modal-close:hover { color: #fff; background: rgba(255,255,255,0.12); }
+    .learn-facts { display: flex; flex-direction: column; gap: 8px; }
+    .learn-fact { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: rgba(56,189,248,0.05); border: 1px solid rgba(56,189,248,0.08); border-radius: 10px; font-size: 0.8rem; color: rgba(255,255,255,0.7); }
+    .learn-fact::before { content: '✦'; color: var(--sky); font-size: 0.6rem; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+<div class="bg-particles" id="particles"></div>
+<div class="center-glow"></div>
+<div class="scanlines"></div>
+
+<!-- NAV — outside all pages so it's always visible -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-icon" style="padding:0;overflow:hidden;background:none;box-shadow:none;"><img src="64642-roblox-rivals-logo.png" style="width:100%;height:100%;object-fit:contain;" alt="Rivals"></div>
+    <span>Skin</span>&nbsp;Changer
+  </div>
+  <div class="nav-center">
+    <a href="#" class="active" onclick="showPage('home',this);return false;">Home</a>
+    <a href="#" onclick="showPage('dashboard',this);return false;">Dashboard</a>
+  </div>
+  <div class="nav-right">
+    <div class="nav-badge"><div class="dot"></div>v1.0.0</div>
+  </div>
+</nav>
+
+<!-- HOME -->
+<div id="home" class="page active">
+  <div class="logo-wrap">
+    <div class="orbit orbit-1"></div>
+    <div class="orbit orbit-2"></div>
+    <div class="logo-circle">
+      <img src="64642-roblox-rivals-logo.png" class="logo-r" alt="Rivals Logo">
+      <div class="logo-config" onclick="document.getElementById('scriptOverlay').classList.add('show')" style="cursor:pointer;">Show Script</div>
+    </div>
+  </div>
+  <p class="tagline">Built Different. Built For You.</p>
+  <div id="yt-status" style="margin-top:14px;display:none;align-items:center;gap:8px;background:rgba(255,0,0,0.08);border:1px solid rgba(255,80,80,0.25);border-radius:30px;padding:6px 16px;font-size:0.75rem;color:rgba(255,120,120,0.9);letter-spacing:1px;animation:fadeIn 0.5s ease both;">
+    <span style="width:7px;height:7px;border-radius:50%;background:#ff4444;box-shadow:0 0 7px #ff4444;display:inline-block;animation:blink 2s ease-in-out infinite;flex-shrink:0;"></span>
+    Found YouTube
+  </div>
+
+  <!-- YouTube Player -->
+  <div id="yt-player-wrap" style="margin-top:22px;display:flex;flex-direction:column;align-items:center;gap:12px;animation:fadeIn 1s ease 1s both;">
+    <div style="display:flex;gap:8px;width:100%;max-width:420px;">
+      <input id="yt-input" type="text" placeholder="Paste a YouTube link..." style="
+        flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(56,189,248,0.2);
+        border-radius:12px;padding:10px 16px;color:#fff;font-size:0.82rem;font-family:'Inter',sans-serif;
+        outline:none;transition:border-color 0.2s,box-shadow 0.2s;
+      " onfocus="this.style.borderColor='rgba(56,189,248,0.6)';this.style.boxShadow='0 0 14px rgba(56,189,248,0.15)'"
+         onblur="this.style.borderColor='rgba(56,189,248,0.2)';this.style.boxShadow='none'"
+         onkeydown="if(event.key==='Enter')loadYT()" />
+      <button onclick="loadYT()" style="
+        padding:10px 18px;border-radius:12px;border:none;
+        background:linear-gradient(135deg,#0ea5e9,#38bdf8);
+        color:#fff;font-size:0.82rem;font-weight:700;font-family:'Inter',sans-serif;
+        box-shadow:0 0 16px rgba(56,189,248,0.3);transition:all 0.2s;white-space:nowrap;
+      " onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 0 26px rgba(56,189,248,0.55)'"
+         onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 0 16px rgba(56,189,248,0.3)'">
+        ▶ Play
+      </button>
+    </div>
+    <div id="yt-frame-wrap" style="display:none;width:100%;max-width:420px;border-radius:14px;overflow:hidden;border:1px solid rgba(56,189,248,0.15);box-shadow:0 0 30px rgba(56,189,248,0.1);">
+      <iframe id="yt-frame" width="100%" height="215" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen style="display:block;"></iframe>
+    </div>
+    <p id="yt-error" style="display:none;font-size:0.75rem;color:rgba(255,100,100,0.8);letter-spacing:0.5px;"></p>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="page">
+  <div class="dash-header">
+    <div class="dash-header-text">
+      <h1>Skin Changer</h1>
+      <p>Select a weapon to change its skin</p>
+    </div>
+    <div class="dash-header-actions">
+      <button class="btn-preview-config" onclick="openConfigPreview()">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Config Preview
+      </button>
+      <button class="btn-save-config" onclick="saveConfig()">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save
+      </button>
+    </div>
+  </div>
+  <div class="dash-grid" id="dash-grid"></div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+  <div class="bar-segment" onclick="document.getElementById('updatePopup').classList.toggle('show')" style="cursor:pointer;">
+    <div class="status-dot"></div>
+    <span class="label">Last Updated</span>
+    <span class="value">Mar 26, 2026</span>
+  </div>
+  <div class="bar-segment" onclick="toggleTeamPopup()" style="cursor:pointer;">
+    <svg width="14" height="14" fill="none" stroke="rgba(56,189,248,0.6)" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span class="label">Cash</span>
+    <svg width="14" height="14" fill="none" stroke="rgba(56,189,248,0.6)" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span class="value">JuiceTheKidd</span>
+  </div>
+  <div class="bar-segment">
+    <button class="btn-start" onclick="showPage('dashboard', document.querySelector('.nav-center a:nth-child(2)'))">Get started →</button>
+  </div>
+</div>
+
+<!-- UPDATE POPUP -->
+<div class="update-popup" id="updatePopup">
+  <div class="update-popup-title">Rivals Script</div>
+  <div class="update-popup-date">Last updated — Mar 26, 2026</div>
+  <div class="update-item">
+    <span class="update-tag tag-update">UPDATE</span>
+    <span class="update-text">Updated to latest offsets</span>
+  </div>
+  <div class="update-item">
+    <span class="update-tag tag-new">NEW</span>
+    <span class="update-text">Added key skin features</span>
+  </div>
+  <div class="update-item">
+    <span class="update-tag tag-fix">FIX</span>
+    <span class="update-text">Fixed skin loader stability</span>
+  </div>
+  <div class="update-item">
+    <span class="update-tag tag-new">NEW</span>
+    <span class="update-text">Added support for new weapons</span>
+  </div>
+  <div class="update-item">
+    <span class="update-tag tag-update">UPDATE</span>
+    <span class="update-text">Improved script performance</span>
+  </div>
+</div>
+
+<!-- CONFIG PREVIEW MODAL -->
+<div class="config-overlay" id="configOverlay" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="config-modal">
+    <div class="config-modal-header">
+      <span class="config-modal-title">Config Preview</span>
+      <button class="config-modal-close" onclick="document.getElementById('configOverlay').classList.remove('show')">✕</button>
+    </div>
+    <div class="config-preview-box" id="configPreviewBox"></div>
+    <div class="config-modal-footer">
+      <button class="config-copy-btn" onclick="copyConfig()">Copy Config</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCRIPT POPUP -->
+<div class="script-overlay" id="scriptOverlay" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="script-modal">
+    <div class="script-modal-header">
+      <div class="script-modal-title">Script</div>
+      <button class="script-modal-close" onclick="document.getElementById('scriptOverlay').classList.remove('show')">✕</button>
+    </div>
+    <div class="script-box" id="scriptText">loadstring(game:HttpGet("https://raw.githubusercontent.com/27timenumber1gurningchampionworldwide/matcha/refs/heads/main/loader1.lua"))()</div>
+    <button class="script-copy-btn" onclick="copyScript()">Copy Script</button>
+  </div>
+</div>
+
+<!-- COPY TOAST -->
+<div class="copy-toast" id="copyToast">Script copied!</div>
+
+<!-- LEARN MORE OVERLAY -->
+<div class="learn-overlay" id="learnOverlay" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="learn-modal">
+    <div class="learn-modal-top">
+      <div class="learn-modal-avatar"><img id="learnAvatar" src="" alt=""></div>
+      <div class="learn-modal-name" id="learnName"></div>
+      <button class="learn-modal-close" onclick="document.getElementById('learnOverlay').classList.remove('show')">✕</button>
+    </div>
+    <div class="learn-facts" id="learnFacts"></div>
+  </div>
+</div>
+
+<!-- TEAM POPUP -->
+<div class="team-popup" id="teamPopup">
+  <button class="popup-close" onclick="toggleTeamPopup()">✕</button>
+  <div class="popup-member">
+    <div class="popup-avatar" style="padding:0;overflow:hidden;"><img src="Juice_WRLD_1.jpg" style="width:100%;height:100%;object-fit:cover;" alt="C"></div>
+    <div class="popup-info">
+      <div class="popup-name">Cash</div>
+      <div class="popup-roles">
+        <span class="popup-role owner">Owner</span>
+        <span class="popup-role">Script Dev</span>
+        <span class="popup-role">Website Dev</span>
+      </div>
+      <div class="popup-discord">not_x3b0</div>
+      <button class="popup-learn-btn" onclick="openLearn('cash')">Learn more about Cash</button>
+    </div>
+  </div>
+  <div class="popup-member">
+    <div class="popup-avatar" style="padding:0;overflow:hidden;"><img src="JuiceTheKidd-0.webp" style="width:100%;height:100%;object-fit:cover;" alt="J"></div>
+    <div class="popup-info">
+      <div class="popup-name">JuiceTheKidd</div>
+      <div class="popup-roles">
+        <span class="popup-role">Website Dev</span>
+      </div>
+      <div class="popup-discord">notloveletter</div>
+      <button class="popup-learn-btn" onclick="openLearn('juice')">Learn more about JuiceTheKidd</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 3.5 + 1;
+    p.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;animation-duration:${7+Math.random()*14}s;animation-delay:${Math.random()*12}s;`;
+    container.appendChild(p);
+  }
+
+  // Sourced from techwiser.com & robloxrivals.fandom.com
+  const WEAPONS = {
+    Primary: [
+      {id:'ar',  name:'Assault Rifle',    skins:['Default','Phoenix Rifle','AK-47','Boneclaw Rifle','AUG','Gingerbread AUG','Tommy Gun','AKEY-47','Glorious Assault Rifle']},
+      {id:'bow', name:'Bow',              skins:['Default','Compound Bow','Bat Bow','Dream Bow','Frostbite Bow','Raven Bow','Balloon Bow','Beloved Bow','Keybow','Glorious Bow']},
+      {id:'br',  name:'Burst Rifle',      skins:['Default','Pine Burst','Spectral Burst','Aqua Burst','Electro Rifle','FAMAS','Pixel Burst','Keyst Rifle','Hydro Burst','Glorious Burst Rifle']},
+      {id:'xb',  name:'Crossbow',         skins:['Default','Crossbone','Frostbite Crossbow','Harpoon Crossbow','Arch Crossbow','Pixel Crossbow','Glorious Crossbow']},
+      {id:'dis', name:'Distortion',       skins:['Default','Cyber Distortion','Electropunk Distortion','Glorious Distortion']},
+      {id:'er',  name:'Energy Rifle',     skins:['Default','New Year Energy Rifle','Glorious Energy Rifle']},
+      {id:'ft',  name:'Flamethrower',     skins:['Default','Keythrower','Pixel Flamethrower','Glitterthrower',"Jack O' Thrower",'Glorious Flamethrower']},
+      {id:'gl',  name:'Grenade Launcher', skins:['Default','Pumpkin Launcher','Balloon Launcher','Snowball Launcher','Firework Launcher','Glorious Grenade Launcher']},
+      {id:'mg',  name:'Minigun',          skins:['Default','Pixel Minigun','Pumpkin Minigun','Wrapped Minigun','Glorious Minigun']},
+      {id:'pb',  name:'Paintball Gun',    skins:['Default','Paintballoon Gun','Glorious Paintball Gun']},
+      {id:'gbl', name:'Gunblade',         skins:['Default','Hyper Gunblade','Glorious Gunblade']},
+      {id:'rpg', name:'RPG',              skins:['Default','RPKey','Glorious RPG']},
+      {id:'sg',  name:'Shotgun',          skins:['Default','Hyper Shotgun','Balloon Shotgun','Wrapped Shotgun','Glorious Shotgun']},
+      {id:'snp', name:'Sniper',           skins:['Default','Event Horizon','Singularity','Hyper Sniper','Gingerbread Sniper','Pixel Sniper','Glorious Sniper']},
+      {id:'scp', name:'Scepter',          skins:['Default','Glorious Scepter']},
+    ],
+    Secondary: [
+      {id:'ep',  name:'Energy Pistols', skins:['Default','New Year Energy Pistols','Glorious Energy Pistols']},
+      {id:'exo', name:'Exogun',         skins:['Default','Exogourd','Glorious Exogun']},
+      {id:'sl',  name:'Slingshot',      skins:['Default','Glorious Slingshot']},
+      {id:'dag', name:'Daggers',        skins:['Default','Crystal Daggers','Bat Daggers','Pumpkin Claws','Glorious Daggers']},
+      {id:'fg',  name:'Flare Gun',      skins:['Default','Wrapped Flare Gun','Vexed Flare Gun','Banana Flare','Glorious Flare Gun']},
+      {id:'hg',  name:'Handgun',        skins:['Default','Gingerbread Handgun','Pumpkin Handgun','Pixel Handgun','Towerstone Handgun','Stealth Handgun','Glorious Handgun']},
+      {id:'rev', name:'Revolver',       skins:['Default','Boneclaw Revolver','Keyvolver','Glorious Revolver']},
+      {id:'sht', name:'Shorty',         skins:['Default','Lovely Shorty','Wrapped Shorty','Demon Shorty','Balloon Shorty','Glorious Shorty']},
+      {id:'spr', name:'Spray',          skins:['Default','Pine Spray','Boneclaw Spray','Lovely Spray','Key Spray','Glorious Spray']},
+      {id:'uzi', name:'Uzi',            skins:['Default','Pine Uzi','Electro Uzi','Keyzi','Glorious Uzi']},
+      {id:'wp',  name:'Warper',         skins:['Default','Electropunk Warper','Frost Warper','Glitter Warper','Glorious Warper']},
+      {id:'gc',  name:'Glass Cannon',   skins:['Default','Glorious Glass Cannon']},
+    ],
+    Melee: [
+      {id:'kat', name:'Katana',      skins:['Default','Saber','Lightning Bolt','Stellar Katana',"Devil's Trident",'2025 Katana','Pixel Katana','Keytana','Arch Katana','Glorious Katana']},
+      {id:'kni', name:'Knife',       skins:['Default','Chancla','Karambit','Balisong','Machete','Candy Cane','Glorious Knife']},
+      {id:'scy', name:'Scythe',      skins:['Default','Scythe of Death','Anchor','Sakura Scythe','Bat Scythe','Cyro Scythe','Keythe','Glorious Scythe','Bug Net']},
+      {id:'chs', name:'Chainsaw',    skins:['Default','Blobsaw','Handsaws','Mega Drill','Buzzsaw','Festive Buzzsaw','Glorious Chainsaw']},
+      {id:'fst', name:'Fists',       skins:['Default','Boxing Gloves','Brass Knuckles','Fists of Hurt','Pumpkin Claws','Festive Fists','Glorious Fists']},
+      {id:'bax', name:'Battle Axe',  skins:['Default','The Shred','Cerulean Axe','Ban Axe','Nordic Axe','Glorious Battle Axe']},
+      {id:'rs',  name:'Riot Shield', skins:['Default','Door','Energy Shield','Masterpiece','Sled','Glorious Riot Shield']},
+      {id:'tro', name:'Trowel',      skins:['Default','Plastic Shovel','Garden Shovel','Paintbrush','Pumpkin Carver','Snow Shovel','Glorious Shovel']},
+      {id:'ml',  name:'Maul',        skins:['Default','Glorious Maul']},
+    ],
+    Utility: [
+      {id:'fb',   name:'Flashbang',        skins:['Default','Disco Ball','Camera','Lightbulb','Skullbang','Shining Star','Pixel Flashbang','Glorious Flashbang']},
+      {id:'gr',   name:'Grenade',          skins:['Default','Whoopee Cushion','Water Balloon','Dynamite','Soul Grenade','Jingle Grenade','Keynade','Glorious Grenade']},
+      {id:'mol',  name:'Molotov',          skins:['Default','Coffee','Torch','Lava Lamp','Vexed Candle','Hot Coals','Glorious Molotov']},
+      {id:'smk',  name:'Smoke Grenade',    skins:['Default','Emoji Cloud','Balance','Hourglass','Eyeball','Snowglobe','Glorious Smoke Grenade']},
+      {id:'sat',  name:'Satchel',          skins:['Default','Advanced Satchel','Notebook Satchel',"Bag O' Money",'Suspicious Gift','Glorious Satchel']},
+      {id:'med',  name:'Medkit',           skins:['Default','Sandwich','Laptop','Medkitty','Bucket of Candy','Milk & Cookies','Briefcase','Glorious Medikit']},
+      {id:'fr',   name:'Freeze Ray',       skins:['Default','Temporal Ray','Bubble Ray','Gum Ray','Spider Ray','Wrapped Freeze Ray','Glorious Freeze Ray']},
+      {id:'wh',   name:'War Horn',         skins:['Default','Trumpet','Megaphone','Air Horn','Mammoth Horn','Glorious War Horn']},
+      {id:'jp',   name:'Jump Pad',         skins:['Default','Trampoline','Bounce House','Shady Chicken Sandwich','Glorious Jump Pad']},
+      {id:'tri',  name:'Subspace Tripmine',skins:['Default',"Don't Press",'Spring','DIY Tripmine','Trick or Treat','Dev-in-the-Box','Glorious Subspace Tripmine']},
+      {id:'ws',   name:'Warpstone',        skins:['Default','Unstable Warpstone','Glorious Warpstone']},
+    ]
+  };
+
+  function buildDash() {
+    const grid = document.getElementById('dash-grid');
+    Object.entries(WEAPONS).forEach(([cat, weapons], ci) => {
+      const card = document.createElement('div');
+      card.className = 'weapon-card';
+      card.style.animationDelay = (ci * 0.07 + 0.05) + 's';
+      let html = `<div class="card-header"><div class="card-header-dot"></div><span>${cat}</span><div class="card-drag-handle"><span></span><span></span><span></span></div></div><div class="card-drop-overlay">Drop</div>`;
+      weapons.forEach(w => {
+        const safeId = w.id;
+        const skinOpts = w.skins.map(s =>
+          `<div class="skin-option" onclick="selectSkin('${safeId}',this)">
+            <div class="skin-thumb"></div>
+            <span class="skin-label">${s}</span>
+            <div class="skin-radio"></div>
+          </div>`
+        ).join('');
+        html += `
+          <div class="weapon-row" onclick="toggleSkins(this)">
+            <div class="weapon-icon" id="icon-${safeId}"></div>
+            <div class="weapon-info">
+              <div class="weapon-name" id="name-${safeId}">${w.name}</div>
+              <div class="weapon-skin" id="skin-${safeId}">Default</div>
+            </div>
+            <div class="weapon-arrow">▼</div>
+          </div>
+          <div class="skin-panel">
+            <div class="skin-panel-header">
+              <span>SELECT SKIN</span>
+              <span class="skin-count" id="count-${safeId}">0 selected</span>
+            </div>
+            ${skinOpts}
+          </div>`;
+      });
+      card.innerHTML = html;
+      grid.appendChild(card);
+    });
+  }
+  buildDash();
+
+  // ── DRAG & DROP REORDER ──
+  let dragSrc = null;
+
+  function initDrag() {
+    document.querySelectorAll('.weapon-card').forEach(card => {
+      const header = card.querySelector('.card-header');
+
+      header.addEventListener('mousedown', () => { card.draggable = true; });
+      document.addEventListener('mouseup', () => {
+        document.querySelectorAll('.weapon-card').forEach(c => c.draggable = false);
+      });
+
+      card.addEventListener('dragstart', e => {
+        dragSrc = card;
+
+        // Use the full card as the drag image
+        const rect = card.getBoundingClientRect();
+        const ghost = card.cloneNode(true);
+        ghost.style.cssText = `
+          position:fixed; top:-9999px; left:-9999px;
+          width:${rect.width}px; opacity:0.85;
+          border-radius:16px; pointer-events:none;
+          background:rgba(8,18,30,0.95);
+          border:1px solid rgba(56,189,248,0.5);
+          box-shadow:0 0 30px rgba(56,189,248,0.3);
+        `;
+        document.body.appendChild(ghost);
+        e.dataTransfer.setDragImage(ghost, e.clientX - rect.left, e.clientY - rect.top);
+        setTimeout(() => {
+          document.body.removeChild(ghost);
+          card.classList.add('dragging');
+        }, 0);
+
+        e.dataTransfer.effectAllowed = 'move';
+      });
+
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        card.draggable = false;
+        document.querySelectorAll('.weapon-card').forEach(c => c.classList.remove('drag-over'));
+        dragSrc = null;
+      });
+
+      card.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dragSrc && dragSrc !== card) {
+          document.querySelectorAll('.weapon-card').forEach(c => c.classList.remove('drag-over'));
+          card.classList.add('drag-over');
+        }
+      });
+
+      card.addEventListener('dragleave', e => {
+        if (!card.contains(e.relatedTarget)) card.classList.remove('drag-over');
+      });
+
+      card.addEventListener('drop', e => {
+        e.preventDefault();
+        card.classList.remove('drag-over');
+        if (!dragSrc || dragSrc === card) return;
+        const grid = document.getElementById('dash-grid');
+        const cards = [...grid.children];
+        const srcIdx = cards.indexOf(dragSrc);
+        const tgtIdx = cards.indexOf(card);
+        if (srcIdx < tgtIdx) grid.insertBefore(dragSrc, card.nextSibling);
+        else grid.insertBefore(dragSrc, card);
+      });
+    });
+  }
+  initDrag();
+
+  function toggleSkins(row) {
+    const panel = row.nextElementSibling;
+    if (!panel || !panel.classList.contains('skin-panel')) return;
+    row.classList.toggle('open');
+    panel.classList.toggle('open');
+  }
+
+  function selectSkin(weaponId, optionEl) {
+    const panel = optionEl.closest('.skin-panel');
+    panel.querySelectorAll('.skin-option').forEach(o => o.classList.remove('selected'));
+    optionEl.classList.add('selected');
+    const skinName = optionEl.querySelector('.skin-label').textContent;
+    const skinLabel = document.getElementById('skin-' + weaponId);
+    if (skinLabel) skinLabel.textContent = skinName;
+    const countEl = document.getElementById('count-' + weaponId);
+    if (countEl) countEl.textContent = '1 selected';
+    const nameEl = document.getElementById('name-' + weaponId);
+    if (nameEl) nameEl.classList.add('has-skin');
+    const iconEl = document.getElementById('icon-' + weaponId);
+    if (iconEl) iconEl.classList.add('has-skin');
+  }
+
+  function openConfigPreview() {
+    const box = document.getElementById('configPreviewBox');
+    const lines = [];
+    Object.values(WEAPONS).flat().forEach(w => {
+      const skinEl = document.getElementById('skin-' + w.id);
+      if (skinEl && skinEl.textContent && skinEl.textContent !== 'Default') {
+        lines.push({ key: w.name, val: skinEl.textContent });
+      }
+    });
+    if (lines.length === 0) {
+      box.innerHTML = '<span class="config-preview-empty">No skins selected yet.</span>';
+    } else {
+      box.innerHTML = lines.map(l =>
+        `<span class="config-preview-line"><span class="key">${l.key}</span><span class="eq">=</span><span class="val">${l.val}</span></span>`
+      ).join('');
+    }
+    document.getElementById('configOverlay').classList.add('show');
+  }
+
+  function copyConfig() {
+    const lines = [];
+    Object.values(WEAPONS).flat().forEach(w => {
+      const skinEl = document.getElementById('skin-' + w.id);
+      if (skinEl && skinEl.textContent && skinEl.textContent !== 'Default') {
+        lines.push(`${w.name}=${skinEl.textContent}`);
+      }
+    });
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      const toast = document.getElementById('copyToast');
+      toast.textContent = '✓ Config copied!';
+      toast.classList.add('show');
+      setTimeout(() => { toast.classList.remove('show'); toast.textContent = '✓ Script copied!'; }, 2000);
+    });
+  }
+
+  function saveConfig() {
+    // Collect all weapons that have a non-Default skin selected
+    const lines = [];
+    Object.values(WEAPONS).flat().forEach(w => {
+      const skinEl = document.getElementById('skin-' + w.id);
+      if (skinEl && skinEl.textContent && skinEl.textContent !== 'Default') {
+        lines.push(`${w.name}=${skinEl.textContent}`);
+      }
+    });
+
+    if (lines.length === 0) {
+      const toast = document.getElementById('copyToast');
+      toast.textContent = '⚠ No skins selected!';
+      toast.style.color = '#fbbf24';
+      toast.classList.add('show');
+      setTimeout(() => { toast.classList.remove('show'); toast.textContent = '✓ Script copied!'; toast.style.color = ''; }, 2000);
+      return;
+    }
+
+    const content = lines.join('\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'rivalsscript.lua';
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    const toast = document.getElementById('copyToast');
+    toast.textContent = '✓ Config saved!';
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); toast.textContent = '✓ Script copied!'; }, 2000);
+  }
+
+  function copyScript() {
+    const text = document.getElementById('scriptText').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const toast = document.getElementById('copyToast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    });
+  }
+
+  const learnData = {
+    cash: {
+      name: 'Cash', avatar: 'Juice_WRLD_1.jpg',
+      facts: ['W mans', 'Nice website dev', 'Script dev', 'Juice lover']
+    },
+    juice: {
+      name: 'JuiceTheKidd', avatar: 'JuiceTheKidd-0.webp',
+      facts: ['Website dev', 'Juice lover']
+    }
+  };
+
+  function openLearn(id) {
+    const d = learnData[id];
+    document.getElementById('learnAvatar').src = d.avatar;
+    document.getElementById('learnName').textContent = d.name;
+    document.getElementById('learnFacts').innerHTML = d.facts.map(f => `<div class="learn-fact">${f}</div>`).join('');
+    document.getElementById('learnOverlay').classList.add('show');
+  }
+
+  function toggleTeamPopup() {
+    const p = document.getElementById('teamPopup');
+    p.classList.toggle('show');
+  }
+  document.addEventListener('click', e => {
+    const popup = document.getElementById('teamPopup');
+    if (!popup.contains(e.target) && !e.target.closest('.bar-segment[onclick]')) {
+      popup.classList.remove('show');
+    }
+    const upopup = document.getElementById('updatePopup');
+    if (!upopup.contains(e.target) && !e.target.closest('[onclick*="updatePopup"]')) {
+      upopup.classList.remove('show');
+    }
+  });
+
+  function showPage(id, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.nav-center a').forEach(a => a.classList.remove('active'));
+    if (el) el.classList.add('active');
+  }
+
+  // YouTube player
+  function loadYT() {
+    const input = document.getElementById('yt-input').value.trim();
+    const err = document.getElementById('yt-error');
+    const wrap = document.getElementById('yt-frame-wrap');
+    const frame = document.getElementById('yt-frame');
+    err.style.display = 'none';
+
+    // Extract video ID from various YouTube URL formats
+    const match = input.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+    if (!match) {
+      err.textContent = 'Invalid YouTube link. Try youtube.com/watch?v=... or youtu.be/...';
+      err.style.display = 'block';
+      wrap.style.display = 'none';
+      return;
+    }
+    const videoId = match[1];
+    frame.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    wrap.style.display = 'block';
+  }
+
+  // YouTube detection
+  function checkYouTube() {
+    const el = document.getElementById('yt-status');
+    if (!el) return;
+    // Check if user came from YouTube or if YouTube is in the referrer/opener
+    const fromYT = document.referrer && document.referrer.includes('youtube.com');
+    // Also try opener (if opened from a YouTube tab)
+    let openerIsYT = false;
+    try { openerIsYT = window.opener && window.opener.location && window.opener.location.href.includes('youtube.com'); } catch(e) {}
+    if (fromYT || openerIsYT) {
+      el.style.display = 'flex';
+    }
+  }
+  checkYouTube();
+</script>
+</body>
+</html>
+
