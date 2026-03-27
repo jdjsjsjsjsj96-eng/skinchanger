@@ -496,7 +496,7 @@
 
   <!-- Background Video Player -->
   <div id="yt-bg-frame-wrap" style="
-    display:none;position:fixed;inset:0;z-index:1;pointer-events:none;
+    display:none;position:fixed;inset:0;z-index:-1;pointer-events:none;
   ">
     <iframe id="yt-frame" width="100%" height="100%" frameborder="0"
       allow="autoplay;encrypted-media" allowfullscreen
@@ -997,22 +997,20 @@
   function toggleBgPlayer() {
     const wrap = document.getElementById('yt-bg-frame-wrap');
     const collapseBtn = document.getElementById('yt-collapse-btn');
-    const expandBtn = document.getElementById('yt-expand-btn');
     bgActive = !bgActive;
     if (bgActive) {
       wrap.style.display = 'block';
       collapseBtn.style.display = 'block';
-      expandBtn.textContent = '⛶';
-      expandBtn.style.borderColor = 'rgba(56,189,248,0.5)';
-      expandBtn.style.color = 'var(--sky)';
-      expandBtn.style.background = 'rgba(56,189,248,0.15)';
+      // Make all page backgrounds transparent so video shows through
+      document.body.style.background = 'transparent';
+      document.querySelectorAll('.page.active, #home, #dashboard').forEach(el => el.style.background = 'transparent');
+      document.querySelector('.bg-particles').style.opacity = '0.3';
     } else {
       wrap.style.display = 'none';
       collapseBtn.style.display = 'none';
-      expandBtn.textContent = '⛶';
-      expandBtn.style.borderColor = 'rgba(56,189,248,0.25)';
-      expandBtn.style.color = 'var(--sky)';
-      expandBtn.style.background = 'rgba(56,189,248,0.07)';
+      document.body.style.background = '';
+      document.querySelectorAll('.page.active, #home, #dashboard').forEach(el => el.style.background = '');
+      document.querySelector('.bg-particles').style.opacity = '';
     }
   }
 
